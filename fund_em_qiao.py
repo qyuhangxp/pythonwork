@@ -17,12 +17,183 @@ import demjson
 import pandas as pd
 import requests
 
+import re
+import ast
 
-def fund_market_price() -> pd.DataFrame:
+def fund_openend_status() -> pd.DataFrame:
     """
-    东方财富网站-行情中心-基金市场-ETF基金行情
-    http://quote.eastmoney.com/center/gridlist.html#fund_etf
-    :return: 当前时刻的所有ETF基金市价情况
+    东方财富网站-天天基金网-基金申购状态
+    http://fund.eastmoney.com/Fund_sgzt_bzdm.html#fcode,asc_1
+    :return: 当前交易日的所有开放式基金净值数据
+    :rtype: pandas.DataFrame
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    url = f"http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx"
+    params = {
+        "t": "8",
+        "page": "1,100000",
+        "js": "reData",
+        "sort": "fcode,asc",
+        "callback": "?",
+        "_": "1592103802270",
+    }
+    res = requests.get(url, params=params, headers=headers)
+    a = re.search('datas:(.*]),record', res.text)
+    b = ast.literal_eval(a.group(1))
+    temp_df = pd.DataFrame(b)
+    temp_df.columns = [
+        "基金代码",
+        "基金名称",
+        "基金类型",
+        "最新净值",
+        "净值日期",
+        "申购状态",
+        "赎回状态",
+        "下一开放日",
+        "购买起点（元）",
+        "日累计限定金额（元）",
+        "_",
+        "_",
+        "手续费",
+    ]
+    data_df = temp_df[
+        [
+            "基金代码",
+            "基金名称",
+            "基金类型",
+            "最新净值",
+            "净值日期",
+            "申购状态",
+            "赎回状态",
+            "下一开放日",
+            "购买起点（元）",
+            "日累计限定金额（元）",
+            "手续费",
+        ]
+    ]
+    return data_df
+
+
+def fund_value_market_estimationprice(fund: str = "165508") -> pd.DataFrame:
+    """
+    天天基金网站-基金净值估算（实时），示例：
+    http://fund.eastmoney.com/165508.html
+    :return:当前时刻该基金的净值估算情况
+    :rtype: pandas.DataFrame
+    """
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    # 获取基金的估算净值
+    url = f"http://fundgz.1234567.com.cn/js/" + fund + f".js?rt=1592364223979"
+    res = requests.get(url, headers=headers)
+    a = re.search('jsonpgz.*?({.*?})', res.text)
+    b = ast.literal_eval(a.group(1))
+    temp_df = pd.DataFrame([b])
+    temp_df.columns = [
+        "基金代码",
+        "基金名称",
+        "公布净值的日期",
+        "单位净值",
+        "估算净值",
+        "估算值增量%",
+        "估算值时间"
+    ]
+
+    # 获取基金的市价
+    url = f"http://push2.eastmoney.com/api/qt/stock/get"
+    if fund[0:1]== '5':
+        num="1"
+    elif fund[0:1]=="1":
+        num="0"
+    else:
+        return pd.DataFrame([{"估算净值":"","最新价":""}])
+    params = {
+        "cb": "jQuery1124008820987276391623_1592103802228",
+        "secid": num + fund,
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fields": "f43,f169,f170,f46,f60,f84,f116,f44,f45,f171,f126,f47,f48,f168,f164,f49,f161,f55,f92,f59,f152,f167,f50,f86,f71,f172,f182,f191,f192,f532",
+        "type": "CT",
+        "cmd": "1638212",
+        "sty": "FDPBPFB",
+        "st": "z",
+        "js": "((x))",
+        "token": "4f1862fc3b5e77c150a2b985b12db0fd",
+        "_": "1592103802270",
+    }
+    res = requests.get(url, params=params, headers=headers)
+    a = re.search('"data":({.*?})', res.text)
+    b = ast.literal_eval(a.group(1))
+    temp_df2 = pd.DataFrame([b])
+    temp_df2.columns = [
+        "最新价",
+        "最高价",
+        "最低价",
+        "今开",
+        "成交量",
+        "成交额",
+        "外盘",
+        "_",
+        "_",
+        "_",
+        "昨收",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "内盘",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+    ]
+    temp_df2 = temp_df2[
+        [
+            "最新价",
+            "最高价",
+            "最低价",
+            "今开",
+            "成交量",
+            "成交额",
+            "外盘",
+            "内盘",
+            "昨收",
+        ]
+    ]
+    temp_df2["最新价"] = str(int(temp_df2["最新价"]) / 1000)
+    data_df = pd.concat([temp_df[["估算净值"]], temp_df2[["最新价"]]], axis=1)
+    return data_df
+
+
+def fund_market_estimation_price() -> pd.DataFrame:
+    """
+    东方财富网站-行情中心-基金市场-封闭基金行情
+    http://quote.eastmoney.com/center/gridlist.html#fund_close_end
+    :return: 当前时刻的所有封闭基金市价情况
+    """
+
+
+def fund_CLOSEEND_market_price() -> pd.DataFrame:
+    """
+    东方财富网站-行情中心-基金市场-封闭基金行情
+    http://quote.eastmoney.com/center/gridlist.html#fund_close_end
+    :return: 当前时刻的所有封闭基金市价情况
     :rtype: pandas.DataFrame
     """
     headers = {
@@ -39,16 +210,16 @@ def fund_market_price() -> pd.DataFrame:
         "fltt": "2",
         "invt": "2",
         "fid": "f3",
-        "fs": "b:MK0021,b:MK0022,b:MK0023,b:MK0024",
+        "fs": "e:19",
         "fields": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
         "_": "1592103802270",
     }
     res = requests.get(url, params=params, headers=headers)
     text_data = res.text
-    a=text_data.strip("jQuery1124008820987276391623_1592103802228(")
-    a=a.strip(");")
+    a = text_data.strip("jQuery1124008820987276391623_1592103802228(")
+    a = a.strip(");")
     data_json = demjson.decode(a)
-    b=data_json["data"]
+    b = data_json["data"]
     temp_df = pd.DataFrame(b["diff"])
     temp_df.columns = [
         "_",
@@ -98,7 +269,177 @@ def fund_market_price() -> pd.DataFrame:
             "最低价",
             "今开",
             "昨收",
-       ]
+        ]
+    ]
+    return data_df
+
+
+def fund_ETF_market_price() -> pd.DataFrame:
+    """
+    东方财富网站-行情中心-基金市场-ETF基金行情
+    http://quote.eastmoney.com/center/gridlist.html#fund_etf
+    :return: 当前时刻的所有ETF基金市价情况
+    :rtype: pandas.DataFrame
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    url = f"http://10.push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "cb": "jQuery1124008820987276391623_1592103802228",
+        "pn": "1",
+        "pz": "100000",
+        "po": "1",
+        "np": "1",
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fltt": "2",
+        "invt": "2",
+        "fid": "f3",
+        "fs": "b:MK0021,b:MK0022,b:MK0023,b:MK0024",
+        "fields": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
+        "_": "1592103802270",
+    }
+    res = requests.get(url, params=params, headers=headers)
+    text_data = res.text
+    a = text_data.strip("jQuery1124008820987276391623_1592103802228(")
+    a = a.strip(");")
+    data_json = demjson.decode(a)
+    b = data_json["data"]
+    temp_df = pd.DataFrame(b["diff"])
+    temp_df.columns = [
+        "_",
+        "最新价",
+        "涨跌幅",
+        "涨跌额",
+        "成交量",
+        "成交额",
+        "振幅",
+        "_",
+        "_",
+        "量比",
+        "_",
+        "基金代码",
+        "_",
+        "基金名称",
+        "最高价",
+        "最低价",
+        "今开",
+        "昨收",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+    ]
+    data_df = temp_df[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌幅",
+            "涨跌额",
+            "成交量",
+            "成交额",
+            "振幅",
+            "量比",
+            "最高价",
+            "最低价",
+            "今开",
+            "昨收",
+        ]
+    ]
+    return data_df
+
+
+def fund_LOF_market_price() -> pd.DataFrame:
+    """
+    东方财富网站-行情中心-基金市场-LOF基金行情
+    http://quote.eastmoney.com/center/gridlist.html#fund_lof
+    :return: 当前时刻的所有LOF基金市价情况
+    :rtype: pandas.DataFrame
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    url = f"http://10.push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "cb": "jQuery1124008820987276391623_1592103802228",
+        "pn": "1",
+        "pz": "100000",
+        "po": "1",
+        "np": "1",
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fltt": "2",
+        "invt": "2",
+        "fid": "f3",
+        "fs": "b:MK0404,b:MK0405,b:MK0406,b:MK0407",
+        "fields": "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
+        "_": "1592103802270",
+    }
+    res = requests.get(url, params=params, headers=headers)
+    text_data = res.text
+    a = text_data.strip("jQuery1124008820987276391623_1592103802228(")
+    a = a.strip(");")
+    data_json = demjson.decode(a)
+    b = data_json["data"]
+    temp_df = pd.DataFrame(b["diff"])
+    temp_df.columns = [
+        "_",
+        "最新价",
+        "涨跌幅",
+        "涨跌额",
+        "成交量",
+        "成交额",
+        "振幅",
+        "_",
+        "_",
+        "量比",
+        "_",
+        "基金代码",
+        "_",
+        "基金名称",
+        "最高价",
+        "最低价",
+        "今开",
+        "昨收",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+    ]
+    data_df = temp_df[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌幅",
+            "涨跌额",
+            "成交量",
+            "成交额",
+            "振幅",
+            "量比",
+            "最高价",
+            "最低价",
+            "今开",
+            "昨收",
+        ]
     ]
     return data_df
 
