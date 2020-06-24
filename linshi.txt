@@ -1,0 +1,98 @@
+def fund_market_price_2() -> pd.DataFrame:
+    """
+    新浪财经-行情中心-基金-ETF基金行情&LOF基金行情
+    http://vip.stock.finance.sina.com.cn/mkt/#etf_hq_fund
+    :return: 当前时刻的所有ETF基金&LOF基金市价情况
+    :rtype: pandas.DataFrame
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    #获取ETF基金市价
+    url = f"http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeDataSimple?page=1&num=10000&sort=symbol&asc=1&node=etf_hq_fund&_s_r_a=page"
+    res = requests.get(url, headers=headers)
+    text_data = eval(res.text)
+    temp_df_1 = pd.DataFrame(text_data)
+    temp_df_1.columns = [
+        "_",
+        "基金名称",
+        "最新价",
+        "涨跌额",
+        "涨跌幅",
+        "买入",
+        "卖出",
+        "昨收",
+        "今开",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "基金代码",
+        "获取时间",
+        "_",
+        "交易状态",
+     ]
+    temp_df_1 = temp_df_1[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌额",
+            "涨跌幅",
+            "买入",
+            "卖出",
+            "昨收",
+            "今开",
+            "最高",
+            "最低",
+            "成交量",
+            "成交额",
+            "获取时间",
+            "交易状态",
+       ]
+    ]
+    #获取LOF基金市价
+    url = f"http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeDataSimple?page=1&num=10000&sort=symbol&asc=1&node=lof_hq_fund&_s_r_a=page"
+    res = requests.get(url, headers=headers)
+    text_data = eval(res.text)
+    temp_df_2 = pd.DataFrame(text_data)
+    temp_df_2.columns = [
+        "_",
+        "基金名称",
+        "最新价",
+        "涨跌额",
+        "涨跌幅",
+        "买入",
+        "卖出",
+        "昨收",
+        "今开",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "基金代码",
+        "获取时间",
+        "_",
+        "交易状态",
+     ]
+    temp_df_2 = temp_df_2[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌额",
+            "涨跌幅",
+            "买入",
+            "卖出",
+            "昨收",
+            "今开",
+            "最高",
+            "最低",
+            "成交量",
+            "成交额",
+            "获取时间",
+            "交易状态",
+       ]
+    ]
+    data_df = pd.concat([temp_df_1, temp_df_2], axis=0, ignore_index=True)
+    return data_df
