@@ -20,6 +20,193 @@ import requests
 import re
 import ast
 
+def fund_market_price_2() -> pd.DataFrame:
+    """
+    新浪财经-行情中心-基金-ETF基金行情&LOF基金行情
+    http://vip.stock.finance.sina.com.cn/mkt/#etf_hq_fund
+    :return: 当前时刻的所有ETF基金&LOF基金市价情况
+    :rtype: pandas.DataFrame
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    #获取ETF基金市价
+    url = f"http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeDataSimple?page=1&num=10000&sort=symbol&asc=1&node=etf_hq_fund&_s_r_a=page"
+    res = requests.get(url, headers=headers)
+    text_data = eval(res.text)
+    temp_df_1 = pd.DataFrame(text_data)
+    temp_df_1.columns = [
+        "_",
+        "基金名称",
+        "最新价",
+        "涨跌额",
+        "涨跌幅",
+        "买入",
+        "卖出",
+        "昨收",
+        "今开",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "基金代码",
+        "获取时间",
+        "_",
+        "交易状态",
+     ]
+    temp_df_1 = temp_df_1[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌额",
+            "涨跌幅",
+            "买入",
+            "卖出",
+            "昨收",
+            "今开",
+            "最高",
+            "最低",
+            "成交量",
+            "成交额",
+            "获取时间",
+            "交易状态",
+       ]
+    ]
+    #获取LOF基金市价
+    url = f"http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeDataSimple?page=1&num=10000&sort=symbol&asc=1&node=lof_hq_fund&_s_r_a=page"
+    res = requests.get(url, headers=headers)
+    text_data = eval(res.text)
+    temp_df_2 = pd.DataFrame(text_data)
+    temp_df_2.columns = [
+        "_",
+        "基金名称",
+        "最新价",
+        "涨跌额",
+        "涨跌幅",
+        "买入",
+        "卖出",
+        "昨收",
+        "今开",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "基金代码",
+        "获取时间",
+        "_",
+        "交易状态",
+     ]
+    temp_df_2 = temp_df_2[
+        [
+            "基金代码",
+            "基金名称",
+            "最新价",
+            "涨跌额",
+            "涨跌幅",
+            "买入",
+            "卖出",
+            "昨收",
+            "今开",
+            "最高",
+            "最低",
+            "成交量",
+            "成交额",
+            "获取时间",
+            "交易状态",
+       ]
+    ]
+    data_df = pd.concat([temp_df_1, temp_df_2], axis=0, ignore_index=True)
+    return data_df
+
+def fund_value_market_estimationprice(fund: str = "165508") -> pd.DataFrame:
+    """
+    东方财富网站-基金和股票的市值（实时），示例：
+    http://fund.eastmoney.com/165508.html
+    :return:当前时刻该基金的净值估算情况
+    :rtype: pandas.DataFrame
+    """
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"
+    }
+    # 获取基金的市价
+    url = f"http://push2.eastmoney.com/api/qt/stock/get"
+    if fund[0:1]== '5':
+        num="1"
+    elif fund[0:1]=="1":
+        num="0"
+    else:
+        return pd.DataFrame([{"估算净值":"","最新价":""}])
+    params = {
+        "cb": "jQuery1124008820987276391623_1592103802228",
+        "secid": num + fund,
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fields": "f43,f169,f170,f46,f60,f84,f116,f44,f45,f171,f126,f47,f48,f168,f164,f49,f161,f55,f92,f59,f152,f167,f50,f86,f71,f172,f182,f191,f192,f532",
+        "type": "CT",
+        "cmd": "1638212",
+        "sty": "FDPBPFB",
+        "st": "z",
+        "js": "((x))",
+        "token": "4f1862fc3b5e77c150a2b985b12db0fd",
+        "_": "1592103802270",
+    }
+    res = requests.get(url, params=params, headers=headers)
+    a = re.search('"data":({.*?})', res.text)
+    b = ast.literal_eval(a.group(1))
+    temp_df2 = pd.DataFrame([b])
+    temp_df2.columns = [
+        "最新价",
+        "最高价",
+        "最低价",
+        "今开",
+        "成交量",
+        "成交额",
+        "外盘",
+        "_",
+        "_",
+        "_",
+        "昨收",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "内盘",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+        "_",
+    ]
+    temp_df2 = temp_df2[
+        [
+            "最新价",
+            "最高价",
+            "最低价",
+            "今开",
+            "成交量",
+            "成交额",
+            "外盘",
+            "内盘",
+            "昨收",
+        ]
+    ]
+    temp_df2["最新价"] = str(int(temp_df2["最新价"]) / 1000)
+    data_df = pd.concat([temp_df[["估算净值"]], temp_df2[["最新价"]]], axis=1)
+    return data_df
+
 def fund_openend_status() -> pd.DataFrame:
     """
     东方财富网站-天天基金网-基金申购状态
@@ -1094,10 +1281,10 @@ def fund_em_value_estimation() -> pd.DataFrame:
         "-",
         "-",
         "-",
-        f"{cal_day}-估算值",
-        f"{cal_day}-估算增长率",
+        "估算值",
+        "估算增长率",
         "-",
-        f"{value_day}-单位净值",
+        "单位净值",
         "-",
         "-",
         "基金名称",
@@ -1108,9 +1295,9 @@ def fund_em_value_estimation() -> pd.DataFrame:
     temp_df = temp_df[[
         "基金代码",
         "基金类型",
-        f"{cal_day}-估算值",
-        f"{cal_day}-估算增长率",
-        f"{value_day}-单位净值",
+        "估算值",
+        "估算增长率",
+        "单位净值",
         "基金名称",
     ]]
     return temp_df
